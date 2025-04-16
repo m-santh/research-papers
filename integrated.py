@@ -187,7 +187,7 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
 
             yield f"Fetched {len(all_papers)} papers so far...", \
                   f"Matched {len(all_filtered)} papers so far...", \
-                  all_filtered, all_authors, all_papers, count_progress
+                  paper_display, author_display, all_paper_display, count_progress
 
     if sort_option == "Most Recent First":
         all_filtered = sorted(all_filtered, key=lambda x: -int(x[5]))

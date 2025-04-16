@@ -1,4 +1,4 @@
-﻿import gradio as gr
+import gradio as gr
 import requests
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer, util
@@ -162,22 +162,30 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
 
             # Sort on-the-fly for live display (optional)
             if sort_option == "Most Recent First":
-                sorted_filtered = sorted(all_filtered, key=lambda x: -int(x[5]))
+                all_filtered = sorted(all_filtered, key=lambda x: -int(x[5]))
+                all_papers = sorted(all_papers, key=lambda x: -int(x[5]))
+
             elif sort_option == "Oldest First":
-                sorted_filtered = sorted(all_filtered, key=lambda x: int(x[5]))
+                all_filtered = sorted(all_filtered, key=lambda x: int(x[5]))
+                all_papers = sorted(all_papers, key=lambda x: int(x[5]))
             elif sort_option == "Relevance":
-                sorted_filtered = sorted(all_filtered, key=lambda x: -float(x[3]))
-            else:
-                sorted_filtered = all_filtered  # fallback
+                all_filtered = sorted(all_filtered, key=lambda x: -float(x[3]))
+                all_papers = sorted(all_papers, key=lambda x: -float(x[3]))
 
             paper_display = "\n\n".join([
-                f"{year} | Score: {float(score):.2f}\nTitle: {title}\nAuthors: {', '.join(authors)}\nLink: {link}"
-                for title, authors, link, score, year, abstract in sorted_filtered
+                f"""{year} | Score: {score:.2f}<br>
+               <b>Title:</b> {title}<br>
+               <b>Authors:</b> {', '.join(authors)}<br>
+               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
+               for title, authors, link, score, year, abstract in all_filtered
             ])
 
             all_paper_display = "\n\n".join([
-                f"{year} | Score: {float(score):.2f}\nTitle: {title}\nAuthors: {', '.join(authors)}\nLink: {link}"
-                for title, authors, link, score, year, abstract in all_papers
+                f"""{year} | Score: {score:.2f}<br>
+               <b>Title:</b> {title}<br>
+               <b>Authors:</b> {', '.join(authors)}<br>
+               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
+               for title, authors, link, score, year, abstract in all_filtered
             ])
 
             author_display = "\n".join([
@@ -191,19 +199,30 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
 
     if sort_option == "Most Recent First":
         all_filtered = sorted(all_filtered, key=lambda x: -int(x[5]))
+        all_papers = sorted(all_papers, key=lambda x: -int(x[5]))
+
     elif sort_option == "Oldest First":
         all_filtered = sorted(all_filtered, key=lambda x: int(x[5]))
+        all_papers = sorted(all_papers, key=lambda x: int(x[5]))
+
     elif sort_option == "Relevance":
         all_filtered = sorted(all_filtered, key=lambda x: -int(x[3]))
+        all_papers = sorted(all_papers, key=lambda x: -float(x[3]))
 
     paper_display = "\n\n".join([
-        f"{year} | Score: {score:.2f}\nTitle: {title}\nAuthors: {', '.join(authors)}\nLink: {link}"
-        for title, authors, link, score, year, abstract in all_filtered
+                f"""{year} | Score: {score:.2f}<br>
+               <b>Title:</b> {title}<br>
+               <b>Authors:</b> {', '.join(authors)}<br>
+               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
+               for title, authors, link, score, year, abstract in all_filtered
     ])
 
     all_paper_display = "\n\n".join([
-        f"{year} | Score: {score:.2f}\nTitle: {title}\nAuthors: {', '.join(authors)}\nLink: {link}"
-        for title, authors, link, score, year, abstract in all_papers
+                f"""{year} | Score: {score:.2f}<br>
+               <b>Title:</b> {title}<br>
+               <b>Authors:</b> {', '.join(authors)}<br>
+               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
+               for title, authors, link, score, year, abstract in all_filtered
     ])
 
     author_display = "\n".join([

@@ -115,7 +115,7 @@ def fetch_dblp_entries(conference_key, year, ref_embedding):
             abstract = get_abstract_from_doi(link)
             full_text = title + " " + abstract if abstract else title
             score, author_count = semantic_filter(full_text, ref_embedding, authors)
-            score = count(score, 2)
+            score = round(score, 2)
             print(paper)
             print(ee_li)
 

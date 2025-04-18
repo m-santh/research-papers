@@ -1,5 +1,6 @@
 import gradio as gr
 import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer, util
 from collections import Counter
@@ -36,33 +37,102 @@ A_CONFERENCES = {
     "HotOS": "USENIX Workshop on Hot Topics in Operating Systems",
 }
 
+import time
+import requests
+from bs4 import BeautifulSoup
+
 def get_abstract_from_doi(doi_url):
     if not doi_url:
-        return ""
+        return "No DOI provided"
+
+    HEADERS = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                      '(KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36'
+    }
+
+    scraper = cloudscraper.create_scraper(
+        browser={"custom": "ScraperBot/1.0"}
+    )
+    # Retry logic
+    for attempt in range(3):
+        try:
+            #scraper = cloudscraper.create_scraper()
+            resp = scraper.get(doi_url, timeout=20, allow_redirects=True)
+
+            #resp = requests.get(doi_url, headers=HEADERS, timeout=20, allow_redirects=True)
+            resp.raise_for_status()
+            final_url = resp.url
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            break
+        except requests.RequestException as e:
+            print(f"[DOI fetch] Attempt {attempt+1}/3 failed: {e}")
+            time.sleep(2)
+    else:
+        return "Connection timeout or failure"
+
+    # === Publisher-specific abstract scraping ===
     try:
-        resp = requests.get(doi_url, headers=HEADERS, timeout=10)
-        soup = BeautifulSoup(resp.text, 'html.parser')
-
-        if "acm.org" in doi_url:
+        if "acm.org" in final_url:
             abstract_div = soup.find("div", class_="abstractSection")
-        elif "ieeexplore.ieee.org" in doi_url:
-            abstract_div = soup.find("div", class_="abstract-text")
-            if not abstract_div:
-                abstract_div = soup.find("meta", {"name": "description"})
-                return abstract_div['content'] if abstract_div else None
-        elif "springer.com" in doi_url:
-            abstract_div = soup.find("section", class_="Abstract")
-            if not abstract_div:
-                abstract_div = soup.find("meta", {"name": "dc.Description"})
-                return abstract_div['content'] if abstract_div else None
-        elif "sciencedirect.com" in doi_url:
-            abstract_div = soup.find("div", class_="abstract author")
-        else:
-            return "Unsupported DOI domain"
+            return abstract_div.get_text(strip=True) if abstract_div else "Abstract not found (ACM)"
 
-        return abstract_div.text.strip() if abstract_div else "Abstract not found"
+        elif "ieeexplore.ieee.org" in final_url:
+            #meta_desc = soup.find("meta", {"name": "description"})
+            meta_desc = (
+                soup.find("meta", {"name": "description"})
+                or soup.find("meta", {"property": "og:description"})
+            )
+
+            if meta_desc and meta_desc.get("content"):
+                return meta_desc["content"]
+            abstract_div = soup.find("div", class_="abstract-text")
+            return abstract_div.get_text(strip=True) if abstract_div else "Abstract not found (IEEE)"
+
+        elif "springer.com" in final_url:
+            abstract_div = soup.find("section", class_="Abstract")
+            if abstract_div:
+                return abstract_div.get_text(strip=True)
+            meta_desc = soup.find("meta", {"name": "dc.Description"})
+            return meta_desc["content"] if meta_desc else "Abstract not found (Springer)"
+
+        elif "sciencedirect.com" in final_url:
+            abstract_div = soup.find("div", class_="abstract author")
+            return abstract_div.get_text(strip=True) if abstract_div else "Abstract not found (Elsevier)"
+
+        else:
+            return f"Unsupported DOI domain: {final_url}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Parsing error: {str(e)}"
+
+#def get_abstract_from_doi(doi_url):
+#    if not doi_url:
+#        return ""
+#    try:
+#        # Follow redirects to get the actual publisher URL
+#        resp = requests.get(doi_url, headers=HEADERS, timeout=10, allow_redirects=True)
+#        final_url = resp.url
+#        soup = BeautifulSoup(resp.text, 'html.parser')
+#
+#        if "acm.org" in final_url:
+#            abstract_div = soup.find("div", class_="abstractSection")
+#        elif "ieeexplore.ieee.org" in final_url:
+#            abstract_div = soup.find("div", class_="abstract-text")
+#            if not abstract_div:
+#                abstract_div = soup.find("meta", {"name": "description"})
+#                return abstract_div['content'] if abstract_div else "Abstract not found"
+#        elif "springer.com" in final_url:
+#            abstract_div = soup.find("section", class_="Abstract")
+#            if not abstract_div:
+#                abstract_div = soup.find("meta", {"name": "dc.Description"})
+#                return abstract_div['content'] if abstract_div else "Abstract not found"
+#        elif "sciencedirect.com" in final_url:
+#            abstract_div = soup.find("div", class_="abstract author")
+#        else:
+#            return f"Unsupported DOI domain: {final_url}"
+#
+#        return abstract_div.text.strip() if abstract_div else "Abstract not found"
+##    except Exception as e:
+#        return f"Error: {str(e)}"
 
 def semantic_filter(text, ref_embedding, authors=None, threshold=0.4):
     filtered = False
@@ -116,8 +186,8 @@ def fetch_dblp_entries(conference_key, year, ref_embedding):
             full_text = title + " " + abstract if abstract else title
             score, author_count = semantic_filter(full_text, ref_embedding, authors)
             score = round(score, 2)
-            print(paper)
-            print(ee_li)
+            print(abstract)
+            print(link)
 
             results.append((title, authors, link or "", score, year, abstract or ""))
 
@@ -176,7 +246,8 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
                 f"""{year} | Score: {score:.2f}<br>
                <b>Title:</b> {title}<br>
                <b>Authors:</b> {', '.join(authors)}<br>
-               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
+               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>
+               <b>Abstract:</b> {abstract}<br>"""
                for title, authors, link, score, year, abstract in all_filtered
             ])
 
@@ -185,7 +256,7 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
                <b>Title:</b> {title}<br>
                <b>Authors:</b> {', '.join(authors)}<br>
                <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
-               for title, authors, link, score, year, abstract in all_filtered
+               for title, authors, link, score, year, abstract in all_papers
             ])
 
             author_display = "\n".join([
@@ -213,7 +284,8 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
                 f"""{year} | Score: {score:.2f}<br>
                <b>Title:</b> {title}<br>
                <b>Authors:</b> {', '.join(authors)}<br>
-               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
+               <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>
+               <b>Abstract:</b> {abstract}<br>"""
                for title, authors, link, score, year, abstract in all_filtered
     ])
 
@@ -222,7 +294,7 @@ def run_stream(a_star_input, a_input, start_year, end_year, query, sort_option):
                <b>Title:</b> {title}<br>
                <b>Authors:</b> {', '.join(authors)}<br>
                <b>Link:</b> <a href="{link}" target="_blank">{link}</a><br>"""
-               for title, authors, link, score, year, abstract in all_filtered
+               for title, authors, link, score, year, abstract in all_papers
     ])
 
     author_display = "\n".join([
@@ -278,10 +350,10 @@ def launch_gui():
             summary_match_output = gr.Textbox(label="Total matched summary", lines=1)
 
         with gr.Row():
-            matching_papers_output = gr.Textbox(label="Matching Papers", lines=10)
+            matching_papers_output = gr.HTML(label="Matching Papers") #, lines=10)
             top_authors_output = gr.Textbox(label="Top Authors", lines=10)
         
-        all_papers_output = gr.Textbox(label="All Fetched Paper Titles", lines=10)
+        all_papers_output = gr.HTML(label="All Fetched Paper Titles") #, lines=10)
 
         #def update_slider_max(total, progress):
         #    return gr.update(maximum=total, value=progress)

@@ -28,7 +28,7 @@ jobs:
             
     - name: SSH into VPS and deploy
       run: |
-        ssh -i ~/.ssh/id_rsa qri@qadis.avinyasq.com << 'EOF'
+        ssh -i ~/.ssh/id_rsa qri@82.29.167.239 << 'EOF'
             echo "SSH success!"
         EOF
         ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'

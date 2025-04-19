@@ -25,14 +25,7 @@ jobs:
           User qri
           IdentityFile ~/.ssh/id_rsa
           IdentitiesOnly yes
-          
-    - name: SSH into server
-      run: |
-        ssh -o StrictHostKeyChecking=no my-server << 'EOF'
-        echo "SSH success!"
-        hostname
-        EOF
-    
+            
     - name: SSH into VPS and deploy
       run: |
         ssh -i ~/.ssh/id_rsa qri@qadis.avinyasq.com << 'EOF'

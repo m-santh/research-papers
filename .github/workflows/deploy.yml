@@ -1,10 +1,3 @@
-name: Deploy to VPS
-
-on:
-  push:
-    branches:
-      - main  # Trigger the action when changes are pushed to the main branch
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -28,14 +21,25 @@ jobs:
         source venv/bin/activate
         pip install -r requirements.txt  # Make sure your requirements file is up to date
 
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # Write the SSH private key from the environment variable
+        chmod 600 ~/.ssh/id_rsa  # Set the correct file permissions for the private key
+        ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts  # Add VPS host to known_hosts to prevent verification prompt
+
+    - name: Debug VPS_HOST
+      run: |
+        echo "VPS_HOST is: $VPS_HOST"  # Check the value of VPS_HOST
+
     - name: SSH into VPS and deploy
       env:
-        SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}  # Store your private key in GitHub secrets
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Store your private key in GitHub secrets
         VPS_HOST: ${{ secrets.VPS_HOST }}  # Store your VPS host address in GitHub secrets
         VPS_USER: ${{ secrets.VPS_USER }}  # Store your VPS user in GitHub secrets
       run: |
         # SSH into the server and deploy
-        ssh -i $SSH_PRIVATE_KEY $VPS_USER@$VPS_HOST << 'EOF'
+        ssh -i ~/.ssh/id_rsa $VPS_USER@$VPS_HOST << 'EOF'
           cd /home/qri/paper/research-papers  # Navigate to your app directory
           git pull origin main  # Pull the latest changes
           source venv/bin/activate  # Activate the virtual environment

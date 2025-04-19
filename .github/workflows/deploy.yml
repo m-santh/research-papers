@@ -1,29 +1,44 @@
-name: Deploy to Hostinger VPS
+name: Deploy to VPS
 
 on:
   push:
     branches:
-      - main  # Change if you use another branch
+      - main  # Trigger the action when changes are pushed to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.12'  # Use the Python version you want (e.g., 3.9)
 
-    - name: Deploy to VPS
+    - name: Set up virtual environment
       run: |
-        ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
-          cd /var/www/my-app-folder && \
-          git pull origin main && \
-          docker-compose restart || pm2 restart || systemctl restart my-app
-        "
+        python -m venv venv
+        source venv/bin/activate
+
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        pip install -r requirements.txt  # Make sure your requirements file is up to date
+
+    - name: SSH into VPS and deploy
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Store your private key in GitHub secrets
+        VPS_HOST: ${{ secrets.VPS_HOST }}  # Store your VPS host address in GitHub secrets
+        VPS_USER: ${{ secrets.VPS_USER }}  # Store your VPS user in GitHub secrets
+      run: |
+        # SSH into the server and deploy
+        ssh -i $SSH_PRIVATE_KEY $VPS_USER@$VPS_HOST << 'EOF'
+          cd /home/qri/paper/research-papers  # Navigate to your app directory
+          git pull origin main  # Pull the latest changes
+          source venv/bin/activate  # Activate the virtual environment
+          pip install -r requirements.txt  # Install/update dependencies
+          pm2 restart python3  # Restart the PM2 process (use your PM2 app name)
+        EOF

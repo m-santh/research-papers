@@ -30,7 +30,7 @@ jobs:
 
     - name: SSH into VPS and deploy
       env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Store your private key in GitHub secrets
+        SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}  # Store your private key in GitHub secrets
         VPS_HOST: ${{ secrets.VPS_HOST }}  # Store your VPS host address in GitHub secrets
         VPS_USER: ${{ secrets.VPS_USER }}  # Store your VPS user in GitHub secrets
       run: |

@@ -10,33 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.12'
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
 
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        VPS_HOST: ${{ secrets.VPS_HOST }}
+      - name: Set up SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          name: id_rsa  # optional, defaults to id_rsa
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
-    - name: SSH into VPS and deploy
-      run: |
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $VPS_USER@$VPS_HOST << 'EOF'
-          cd /home/youruser/paper/research-papers
-          git pull origin main
-          source venv/bin/activate
-          pip install -r requirements.txt
-          pm2 restart python3
-        EOF
-      env:
-        VPS_USER: ${{ secrets.VPS_USER }}
-        VPS_HOST: ${{ secrets.VPS_HOST }}
+      - name: SSH into VPS and deploy
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /home/youruser/paper/research-papers
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            pm2 restart python3
+          EOF

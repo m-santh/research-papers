@@ -18,6 +18,10 @@ jobs:
       with:
         key: ${{ secrets.VPS_SSH_KEY }}
         known_hosts: ${{ secrets.KNOWN_HOSTS }}
+    
+    - name: Test SSH connection
+      run: |
+        ssh -vvv -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} echo "Connected"
 
     - name: SSH into VPS and deploy
       run: |

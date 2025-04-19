@@ -10,27 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.12'
+    - name: Install SSH key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
-      - name: Set up SSH key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          name: id_rsa  # optional, defaults to id_rsa
-          known_hosts: ${{ secrets.KNOWN_HOSTS }}
-
-      - name: SSH into VPS and deploy
-        run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd /home/youruser/paper/research-papers
-            git pull origin main
-            source venv/bin/activate
-            pip install -r requirements.txt
-            pm2 restart python3
-          EOF
+    - name: SSH into VPS and deploy
+      run: |
+        ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+          cd /home/youruser/paper/research-papers
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pm2 restart python3
+        EOF

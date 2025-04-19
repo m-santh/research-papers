@@ -363,7 +363,7 @@ def launch_gui():
                       inputs=[a_star_input, a_input, start_year, end_year, query, sort_option],
                       outputs=[summary_output, summary_match_output, matching_papers_output, top_authors_output, all_papers_output, progress_count])
 
-    demo.launch(server_name="0.0.0.0", server_port=7860, root_path="/research", share=True)
+    demo.launch(server_name="0.0.0.0", server_port=7860, path="/research", share=True)
 
 if __name__ == '__main__':
     launch_gui()

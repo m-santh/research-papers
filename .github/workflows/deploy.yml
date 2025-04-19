@@ -14,7 +14,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.12'  # Use the Python version you want (e.g., 3.9)
+        python-version: '3.12'
 
     - name: Set up virtual environment
       run: |
@@ -24,30 +24,31 @@ jobs:
     - name: Install dependencies
       run: |
         source venv/bin/activate
-        pip install -r requirements.txt  # Make sure your requirements file is up to date
+        pip install -r requirements.txt
 
     - name: Set up SSH key
       run: |
         mkdir -p ~/.ssh
         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa  # Write the SSH private key from the environment variable
         chmod 600 ~/.ssh/id_rsa  # Set the correct file permissions for the private key
+        # Check if the VPS_HOST is correctly set
+        echo "VPS_HOST is: $VPS_HOST"
         ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts  # Add VPS host to known_hosts to prevent verification prompt
-
-    - name: Debug VPS_HOST
-      run: |
-        echo "VPS_HOST is: $VPS_HOST"  # Check the value of VPS_HOST
+      shell: /usr/bin/bash -e {0}
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        VPS_HOST: ${{ secrets.VPS_HOST }}
 
     - name: SSH into VPS and deploy
       env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Store your private key in GitHub secrets
-        VPS_HOST: ${{ secrets.VPS_HOST }}  # Store your VPS host address in GitHub secrets
-        VPS_USER: ${{ secrets.VPS_USER }}  # Store your VPS user in GitHub secrets
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        VPS_HOST: ${{ secrets.VPS_HOST }}
+        VPS_USER: ${{ secrets.VPS_USER }}
       run: |
-        # SSH into the server and deploy
         ssh -i ~/.ssh/id_rsa $VPS_USER@$VPS_HOST << 'EOF'
-          cd /home/qri/paper/research-papers  # Navigate to your app directory
-          git pull origin main  # Pull the latest changes
-          source venv/bin/activate  # Activate the virtual environment
-          pip install -r requirements.txt  # Install/update dependencies
-          pm2 restart python3  # Restart the PM2 process (use your PM2 app name)
+          cd /home/qri/paper/research-papers
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pm2 restart python3
         EOF
